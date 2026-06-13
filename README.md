@@ -1,2 +1,3 @@
 # prism
-ApiGateway
+
+Prism is an ultra-fast API gateway.
