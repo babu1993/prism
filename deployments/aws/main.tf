@@ -31,10 +31,9 @@ variable "instance_type" {
   default     = "t3.micro"
 }
 
-variable "key_name" {
-  description = "Existing EC2 Key Pair name for SSH access"
+variable "public_key" {
+  description = "SSH public key material to import as an EC2 Key Pair"
   type        = string
-  default     = null
 }
 
 variable "allowed_ssh_cidr" {
@@ -70,6 +69,11 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
+data "aws_ip_ranges" "ec2_instance_connect" {
+  regions  = [var.aws_region]
+  services = ["EC2_INSTANCE_CONNECT"]
+}
+
 data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
@@ -77,6 +81,15 @@ data "aws_ami" "amazon_linux" {
   filter {
     name   = "name"
     values = ["al2023-ami-*-x86_64"]
+  }
+}
+
+resource "aws_key_pair" "main" {
+  key_name   = "${var.name_prefix}-keypair"
+  public_key = file("${var.public_key}")
+
+  tags = {
+    Name = "${var.name_prefix}-keypair"
   }
 }
 
@@ -192,6 +205,14 @@ resource "aws_security_group" "bastion" {
     cidr_blocks = [var.allowed_ssh_cidr]
   }
 
+  ingress {
+    description = "EC2 Instance Connect service IPs"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = data.aws_ip_ranges.ec2_instance_connect.cidr_blocks
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -232,8 +253,8 @@ resource "aws_security_group" "private" {
 resource "aws_instance" "public_bastion" {
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = var.instance_type
-  key_name                    = var.key_name
   subnet_id                   = aws_subnet.public.id
+  key_name                    = aws_key_pair.main.key_name
   vpc_security_group_ids      = [aws_security_group.bastion.id]
   associate_public_ip_address = true
 
@@ -247,8 +268,8 @@ resource "aws_instance" "private_nodes" {
 
   ami                    = data.aws_ami.amazon_linux.id
   instance_type          = var.instance_type
-  key_name               = var.key_name
   subnet_id              = aws_subnet.private[count.index].id
+  key_name               = aws_key_pair.main.key_name
   vpc_security_group_ids = [aws_security_group.private.id]
 
   tags = {
