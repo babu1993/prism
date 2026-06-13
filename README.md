@@ -62,3 +62,35 @@ terraform destroy \
 | `vpc_cidr` | CIDR block for the VPC | `10.10.0.0/16` |
 | `public_subnet_cidr` | CIDR block for the public subnet | `10.10.1.0/24` |
 | `private_subnet_cidrs` | CIDR blocks for the three private subnets | `["10.10.11.0/24", "10.10.12.0/24", "10.10.13.0/24"]` |
+
+## Remote Connection
+
+Private instances have no public IP and are reachable only by jumping through the public bastion host.
+The recommended method is **SSH agent forwarding with a jump host (`-J`)**, which lets you connect
+to a private node in a single command without copying your private key onto the bastion.
+
+### How it works
+
+```
+Your machine  ──SSH──▶  Bastion (public IP)  ──SSH──▶  Private node (private IP)
+```
+
+1. `-A` forwards your local SSH agent to the bastion so the private key is available for the second hop.
+2. `-i "~/.ssh/ec2-key"` selects the key pair used for both the bastion and the private node.
+3. `-J ec2-user@<bastion-public-ip>` instructs SSH to proxy through the bastion before opening the final connection.
+
+### Connect to a private instance
+
+```bash
+ssh -A -i "~/.ssh/ec2-key" -J ec2-user@<public-instance-ip> ec2-user@<private-instance-ip>
+```
+
+| Part | Meaning |
+|---|---|
+| `-A` | Enable SSH agent forwarding |
+| `-i "~/.ssh/ec2-key"` | Private key used to authenticate on both hops |
+| `-J ec2-user@3.88.219.121` | Jump (proxy) through the bastion at public IP `3.88.219.121` |
+| `ec2-user@10.10.13.222` | Target private instance at `10.10.13.222` |
+
+> **Note:** Replace `3.88.219.121` with the bastion public IP shown in the `public_instance_ip` Terraform output,
+> and `10.10.13.222` with the relevant private IP from the `private_instance_ips` output.
