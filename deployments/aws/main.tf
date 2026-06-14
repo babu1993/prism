@@ -28,7 +28,7 @@ variable "name_prefix" {
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string
-  default     = "t3.micro"
+  default     = "t3.large"
 }
 
 variable "public_key" {
@@ -258,16 +258,25 @@ resource "aws_instance" "public_bastion" {
   vpc_security_group_ids      = [aws_security_group.bastion.id]
   associate_public_ip_address = true
 
-  ebs_block_device {
-    device_name           = "/dev/xvdb"
-    volume_size           = 3
-    volume_type           = "gp3"
-    delete_on_termination = true
-  }
-
   tags = {
     Name = "${var.name_prefix}-public-bastion"
   }
+}
+
+resource "aws_ebs_volume" "public_bastion" {
+  availability_zone = aws_instance.public_bastion.availability_zone
+  size              = 3
+  type              = "gp3"
+
+  tags = {
+    Name = "${var.name_prefix}-public-bastion-ebs"
+  }
+}
+
+resource "aws_volume_attachment" "public_bastion" {
+  device_name = "/dev/xvdb"
+  volume_id   = aws_ebs_volume.public_bastion.id
+  instance_id = aws_instance.public_bastion.id
 }
 
 resource "aws_instance" "private_nodes" {
@@ -279,16 +288,29 @@ resource "aws_instance" "private_nodes" {
   key_name               = aws_key_pair.main.key_name
   vpc_security_group_ids = [aws_security_group.private.id]
 
-  ebs_block_device {
-    device_name           = "/dev/xvdb"
-    volume_size           = 3
-    volume_type           = "gp3"
-    delete_on_termination = true
-  }
-
   tags = {
     Name = "${var.name_prefix}-private-node-${count.index + 1}"
   }
+}
+
+resource "aws_ebs_volume" "private_nodes" {
+  count = 3
+
+  availability_zone = aws_instance.private_nodes[count.index].availability_zone
+  size              = 3
+  type              = "gp3"
+
+  tags = {
+    Name = "${var.name_prefix}-private-node-${count.index + 1}-ebs"
+  }
+}
+
+resource "aws_volume_attachment" "private_nodes" {
+  count = 3
+
+  device_name = "/dev/xvdb"
+  volume_id   = aws_ebs_volume.private_nodes[count.index].id
+  instance_id = aws_instance.private_nodes[count.index].id
 }
 
 output "public_instance_ip" {
