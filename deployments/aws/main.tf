@@ -258,6 +258,13 @@ resource "aws_instance" "public_bastion" {
   vpc_security_group_ids      = [aws_security_group.bastion.id]
   associate_public_ip_address = true
 
+  ebs_block_device {
+    device_name           = "/dev/xvdb"
+    volume_size           = 3
+    volume_type           = "gp3"
+    delete_on_termination = true
+  }
+
   tags = {
     Name = "${var.name_prefix}-public-bastion"
   }
@@ -271,6 +278,13 @@ resource "aws_instance" "private_nodes" {
   subnet_id              = aws_subnet.private[count.index].id
   key_name               = aws_key_pair.main.key_name
   vpc_security_group_ids = [aws_security_group.private.id]
+
+  ebs_block_device {
+    device_name           = "/dev/xvdb"
+    volume_size           = 3
+    volume_type           = "gp3"
+    delete_on_termination = true
+  }
 
   tags = {
     Name = "${var.name_prefix}-private-node-${count.index + 1}"
