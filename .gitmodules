@@ -1,0 +1,4 @@
+[submodule "src/nginx"]
+	path = src/nginx
+	url = https://github.com/nginx/nginx.git
+	branch = master

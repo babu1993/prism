@@ -53,3 +53,10 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.terraform.tfstate
+*.terraform.tfstate.backup
