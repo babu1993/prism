@@ -71,7 +71,8 @@ fi
 
 if [ ! -d "$CHECKOUT_DIR/.git" ]; then
 	echo "Checking out repository from $REPO_URL into $CHECKOUT_DIR..."
-	git clone "$REPO_URL" "$CHECKOUT_DIR"
+	git clone --recurse-submodules "$REPO_URL" "$CHECKOUT_DIR"
 else
 	echo "Repository already checked out at $CHECKOUT_DIR (use --force-checkout to re-clone)"
+	git -C "$CHECKOUT_DIR" submodule update --init --recursive
 fi
